@@ -13,8 +13,14 @@ const TicTacMinesweeper = () => {
   const [playerSymbol, setPlayerSymbol] = useState(null);
 
   useEffect(() => {
-    const SERVER_URL = process.env.REACT_APP_SERVER_URL || 'http://localhost:3001';
-    const newSocket = io(SERVER_URL, { withCredentials: true });
+    const SERVER_URL = process.env.REACT_APP_SERVER_URL;
+    console.log('Connecting to server:', SERVER_URL);
+    const newSocket = io(SERVER_URL, { 
+      withCredentials: true,
+      extraHeaders: {
+        "my-custom-header": "abcd"
+      }
+    });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
