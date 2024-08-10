@@ -13,13 +13,19 @@ const TicTacMinesweeper = () => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:3001');
+    const newSocket = io('https://tic-tac-mine.onrender.com', {
+      withCredentials: true,
+      extraHeaders: {
+        "my-custom-header": "abcd"
+      }
+    });
+
     setSocket(newSocket);
 
     newSocket.on('move', (data) => {
       setGrid(data.grid);
       setCurrentPlayer(data.nextPlayer); // Use the nextPlayer sent from the server
-      setIsMyTurn(data.nextPlayer !== currentPlayer); // Determine if it's this client's turn
+      setIsMyTurn(data.nextPlayer === currentPlayer); // Determine if it's this client's turn
     });
 
     newSocket.on('minesRevealed', () => {
@@ -30,13 +36,16 @@ const TicTacMinesweeper = () => {
     return () => newSocket.disconnect();
   }, [currentPlayer]);
 
+  useEffect(() => {
+    initializeGame();
+  }, []);
+
   const handleCellClick = (row, col) => {
     if (!isMyTurn || grid[row][col].revealed || gameOver) return;
 
-    const newGrid = grid.map((r, rowIndex) =>
-      rowIndex === row ? r.map((c, colIndex) => 
-        colIndex === col ? { ...c, revealed: true, value: currentPlayer } : c) : r
-    );
+    const newGrid = [...grid];
+    newGrid[row] = [...newGrid[row]];
+    newGrid[row][col] = { ...newGrid[row][col], revealed: true, value: currentPlayer };
 
     const isMine = mineLocations.some(mine => mine.row === row && mine.col === col);
 
@@ -53,50 +62,22 @@ const TicTacMinesweeper = () => {
   };
 
   const checkGameStatus = (newGrid, row, col) => {
-    // Check row
-    if (newGrid[row].every(cell => cell.value === currentPlayer && cell.revealed)) {
+    const completeLine = (arr) => arr.every(cell => cell.value === currentPlayer && cell.revealed);
+
+    // Check rows, columns, and diagonals for a winning line
+    let rowWin = completeLine(newGrid[row]);
+    let colWin = completeLine(newGrid.map(r => r[col]));
+    let diag1Win = row === col && completeLine(newGrid.map((r, idx) => r[idx]));
+    let diag2Win = row + col === newGrid.length - 1 && completeLine(newGrid.map((r, idx) => r[newGrid.length - 1 - idx]));
+
+    if (rowWin || colWin || diag1Win || diag2Win) {
       setGameOver(true);
       setWinner(currentPlayer);
       updateScores(currentPlayer);
       return;
     }
 
-    // Check column
-    let columnWin = true;
-    for (let i = 0; i < newGrid.length; i++) {
-      if (newGrid[i][col].value !== currentPlayer || !newGrid[i][col].revealed) {
-        columnWin = false;
-        break;
-      }
-    }
-    if (columnWin) {
-      setGameOver(true);
-      setWinner(currentPlayer);
-      updateScores(currentPlayer);
-      return;
-    }
-
-    // Check major diagonal (top-left to bottom-right)
-    if (row === col) {
-      if (newGrid.every((row, idx) => row[idx].value === currentPlayer && row[idx].revealed)) {
-        setGameOver(true);
-        setWinner(currentPlayer);
-        updateScores(currentPlayer);
-        return;
-      }
-    }
-
-    // Check minor diagonal (top-right to bottom-left)
-    if (row + col === newGrid.length - 1) {
-      if (newGrid.every((row, idx) => row[newGrid.length - 1 - idx].value === currentPlayer && row[newGrid.length - 1 - idx].revealed)) {
-        setGameOver(true);
-        setWinner(currentPlayer);
-        updateScores(currentPlayer);
-        return;
-      }
-    }
-
-    // Check for draw: if all cells are revealed and there is no winner
+    // Check for draw
     const allCellsRevealed = newGrid.every(row => row.every(cell => cell.revealed));
     if (allCellsRevealed && !winner) {
       setGameOver(true);
@@ -105,10 +86,7 @@ const TicTacMinesweeper = () => {
   };
 
   const updateScores = (winner) => {
-    setScores((prevScores) => ({
-      ...prevScores,
-      [winner]: prevScores[winner] + 1
-    }));
+    setScores(prev => ({ ...prev, [winner]: prev[winner] + 1 }));
   };
 
   const revealAllMines = () => {
@@ -121,26 +99,21 @@ const TicTacMinesweeper = () => {
   };
 
   const initializeGame = () => {
-    const newGrid = Array(9).fill().map(() => Array(9).fill({ revealed: false, value: null }));
-    const mines = placeMines(10);
-    setGrid(newGrid);
-    setMineLocations(mines);
-    setGameOver(false);
-    setCurrentPlayer('X');
-    setWinner(null);
-    setIsMyTurn(true); // Reset turn for the new game
-  };
-
-  const placeMines = (count) => {
-    const mines = [];
-    while (mines.length < count) {
+    // Randomly place 10 mines
+    const newMines = [];
+    while (newMines.length < 10) {
       const row = Math.floor(Math.random() * 9);
       const col = Math.floor(Math.random() * 9);
-      if (!mines.some(mine => mine.row === row && mine.col === col)) {
-        mines.push({ row, col });
+      if (!newMines.some(m => m.row === row && m.col === col)) {
+        newMines.push({ row, col });
       }
     }
-    return mines;
+    setMineLocations(newMines);
+    setGrid(Array(9).fill().map(() => Array(9).fill({ revealed: false, value: null })));
+    setCurrentPlayer('X');
+    setGameOver(false);
+    setWinner(null);
+    setIsMyTurn(currentPlayer === 'X');
   };
 
   return (
@@ -164,7 +137,11 @@ const TicTacMinesweeper = () => {
           </div>
         ))}
       </div>
-      {gameOver && <div className="game-over">{winner ? `Game Over! ${winner} wins!` : 'Game Over! Hit a mine!'}</div>}
+      {gameOver && (
+        <div className="game-over">
+          {winner ? `Game Over! ${winner} wins!` : 'Game Over! Hit a mine!'}
+        </div>
+      )}
       <button className="restart-button" onClick={initializeGame}>Restart Game</button>
     </div>
   );

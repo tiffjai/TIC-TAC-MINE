@@ -4,12 +4,23 @@ const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
+
+// Setup CORS based on the environment
+const clientUrl = process.env.NODE_ENV === 'production' 
+                  ? 'https://tic-tac-mine.onrender.com'   // Production client URL
+                  : 'http://localhost:3000';             // Development client URL
+
 const io = socketIo(server, {
   cors: {
-    origin: 'https://tic-tac-mine.onrender.com', // Change this to your client's URL in production
+    origin: clientUrl,
     methods: ['GET', 'POST'],
     credentials: true
   }
+});
+
+// Serve a simple test route to verify server operation
+app.get('/', (req, res) => {
+  res.send("Server is running!");
 });
 
 // Socket.io connection
