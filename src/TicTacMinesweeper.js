@@ -8,27 +8,31 @@ const TicTacMinesweeper = () => {
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState(null);
   const [socket, setSocket] = useState(null);
-  const [waitingForPlayer, setWaitingForPlayer] = useState(false);
+  const [waitingForPlayer, setWaitingForPlayer] = useState(true);
   const [currentRoomId, setCurrentRoomId] = useState(null);
   const [playerSymbol, setPlayerSymbol] = useState(null);
+  const [connectionError, setConnectionError] = useState(null);
 
   useEffect(() => {
-    const SERVER_URL = process.env.REACT_APP_SERVER_URL;
-    console.log('Connecting to server:', SERVER_URL);
+    const SERVER_URL = process.env.REACT_APP_SERVER_URL || 'https://tic-tac-mine.onrender.com';
+    console.log('Attempting to connect to server:', SERVER_URL);
+    
     const newSocket = io(SERVER_URL, { 
       withCredentials: true,
       extraHeaders: {
         "my-custom-header": "abcd"
-      }
+      },
+      transports: ['websocket', 'polling']
     });
-    setSocket(newSocket);
 
     newSocket.on('connect', () => {
-      console.log('Connected to server');
+      console.log('Successfully connected to server');
+      setConnectionError(null);
     });
 
     newSocket.on('connect_error', (error) => {
       console.error('Connection error:', error);
+      setConnectionError(`Failed to connect to server: ${error.message}`);
     });
 
     newSocket.on('gameInit', data => {
@@ -52,7 +56,6 @@ const TicTacMinesweeper = () => {
       console.log('Game over', data);
       setGameOver(true);
       setWinner(data.winner);
-      console.log(`Game Over. Winner: ${data.winner}. Scores:`, data.scores);
     });
 
     newSocket.on('waitingForPlayer', () => {
@@ -60,13 +63,15 @@ const TicTacMinesweeper = () => {
       setWaitingForPlayer(true);
     });
 
+    setSocket(newSocket);
+
     return () => newSocket.disconnect();
   }, []);
 
   useEffect(() => {
     if (socket) {
       socket.emit('joinRoom');
-      console.log('Joining room...');
+      console.log('Attempting to join room...');
     }
   }, [socket]);
 
@@ -80,6 +85,11 @@ const TicTacMinesweeper = () => {
   return (
     <div className="game-container">
       <h1>Tic-Tac-Minesweeper</h1>
+      {connectionError && (
+        <div className="error-message">
+          {connectionError}
+        </div>
+      )}
       {waitingForPlayer ? (
         <div>Waiting for another player to join...</div>
       ) : (
