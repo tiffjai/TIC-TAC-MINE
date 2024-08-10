@@ -25,6 +25,7 @@ let grid = [];
 let mineLocations = [];
 let currentPlayer = 'X';
 
+// Initialize the game with a grid and random mines
 const initializeGame = () => {
   grid = Array(9).fill().map(() => Array(9).fill({ revealed: false, value: null, isMine: false }));
   mineLocations = [];
@@ -34,7 +35,7 @@ const initializeGame = () => {
     const col = Math.floor(Math.random() * 9);
     if (!mineLocations.some(mine => mine.row === row && mine.col === col)) {
       mineLocations.push({ row, col });
-      grid[row][col] = { revealed: false, value: null, isMine: true };
+      grid[row][col].isMine = true;
     }
   }
 
@@ -42,6 +43,7 @@ const initializeGame = () => {
   return { grid, mines: mineLocations, startingPlayer: currentPlayer };
 };
 
+// Process a move and update the grid
 const processMove = (row, col, player) => {
   if (grid[row][col].revealed || grid[row][col].isMine) return { valid: false, grid };
 
@@ -53,6 +55,7 @@ const processMove = (row, col, player) => {
   return { valid: true, grid, nextPlayer, ...gameResult };
 };
 
+// Check for win conditions or draw
 const checkGameStatus = (grid, player) => {
   const completeLine = (arr) => arr.every(cell => cell.value === player && cell.revealed);
 
@@ -72,6 +75,7 @@ const checkGameStatus = (grid, player) => {
   return { gameOver: false };
 };
 
+// Socket.io connection setup
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
