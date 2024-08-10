@@ -1,0 +1,125 @@
+:root {
+    --main-bg-color: #f3e9e3;
+    --accent-color-1: #ffd5c2;
+    --accent-color-2: #f28482;
+    --text-color: #2d334a;
+    --cell-bg: #ffffff;
+    --cell-hover: #faeee7;
+    --button-color: #84a59d;
+    --button-hover: #5f9ea0;
+  }
+  
+  body {
+    background-color: var(--main-bg-color);
+  }
+  
+  .game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: 'Noto Sans KR', sans-serif;
+    background: linear-gradient(135deg, #ffd5c2, #f7ede2);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin: 40px auto;
+  }
+  
+  h1 {
+    color: var(--text-color);
+    margin-bottom: 30px;
+    font-size: 2.5em;
+    font-weight: 700;
+  }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 2px;
+    background-color: var(--accent-color-1);
+    padding: 2px;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  .row {
+    display: contents;
+  }
+  
+  .cell {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 18px;
+    font-weight: bold;
+    background-color: var(--cell-bg);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 5px;
+  }
+  
+  .cell:hover {
+    background-color: var(--cell-hover);
+  }
+  
+  .cell.revealed {
+    background-color: var(--cell-hover);
+  }
+  
+  .cell.mine {
+    background-color: var(--accent-color-2);
+    color: white;
+  }
+  
+  .scores, .consecutive-moves {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    margin-bottom: 20px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  
+  .scores div, .consecutive-moves div {
+    padding: 10px 15px;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .current-player {
+    margin: 15px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+  
+  .game-over {
+    margin-top: 20px;
+    font-size: 24px;
+    color: var(--accent-color-2);
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .restart-button {
+    margin-top: 25px;
+    padding: 12px 25px;
+    font-size: 18px;
+    background-color: var(--button-color);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .restart-button:hover {
+    background-color: var(--button-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  }
