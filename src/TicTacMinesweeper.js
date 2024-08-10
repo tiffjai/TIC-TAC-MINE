@@ -15,7 +15,8 @@ const TicTacMinesweeper = () => {
   const [waiting, setWaiting] = useState(false);
 
   useEffect(() => {
-    const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001', {
+    const socketUrl = 'https://tic-tac-mine.onrender.com';
+    const newSocket = io(socketUrl, {
       withCredentials: true,
     });
 
