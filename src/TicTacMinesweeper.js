@@ -16,9 +16,7 @@ const TicTacMinesweeper = () => {
 
   useEffect(() => {
     const socketUrl = 'https://tic-tac-mine.onrender.com';
-    const newSocket = io(socketUrl, {
-      withCredentials: true,
-    });
+    const newSocket = io(socketUrl, { withCredentials: true });
 
     setSocket(newSocket);
 
@@ -27,11 +25,11 @@ const TicTacMinesweeper = () => {
       newSocket.emit('joinRoom');
     });
 
-    newSocket.on('playerId', (id) => {
+    newSocket.on('playerId', id => {
       setPlayerId(id);
     });
 
-    newSocket.on('joinedRoom', (data) => {
+    newSocket.on('joinedRoom', data => {
       setRoomId(data.roomId);
     });
 
@@ -39,7 +37,7 @@ const TicTacMinesweeper = () => {
       setWaiting(true);
     });
 
-    newSocket.on('gameInit', (data) => {
+    newSocket.on('gameInit', data => {
       setWaiting(false);
       setGrid(data.grid);
       setCurrentPlayer(data.startingPlayer);
@@ -48,25 +46,25 @@ const TicTacMinesweeper = () => {
       setWinner(null);
     });
 
-    newSocket.on('move', (data) => {
+    newSocket.on('move', data => {
       setGrid(data.grid);
       setCurrentPlayer(data.nextPlayer);
       setIsMyTurn(data.nextPlayer === playerId);
     });
 
-    newSocket.on('minesRevealed', (data) => {
+    newSocket.on('minesRevealed', data => {
       setGrid(data.grid);
       setGameOver(true);
       setWinner(data.winner);
     });
 
-    newSocket.on('gameOver', (data) => {
+    newSocket.on('gameOver', data => {
       setGameOver(true);
       setWinner(data.winner);
       setScores(data.scores);
     });
 
-    newSocket.on('error', (error) => {
+    newSocket.on('error', error => {
       console.error('Socket error:', error);
     });
 
