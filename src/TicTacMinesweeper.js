@@ -12,6 +12,7 @@ const TicTacMinesweeper = () => {
   const [socket, setSocket] = useState(null);
   const [playerId, setPlayerId] = useState(null);
   const [roomId, setRoomId] = useState(null);
+  const [waiting, setWaiting] = useState(false);
 
   useEffect(() => {
     const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001', {
@@ -22,6 +23,7 @@ const TicTacMinesweeper = () => {
 
     newSocket.on('connect', () => {
       console.log('Connected to server');
+      newSocket.emit('joinRoom');
     });
 
     newSocket.on('playerId', (id) => {
@@ -32,7 +34,12 @@ const TicTacMinesweeper = () => {
       setRoomId(data.roomId);
     });
 
+    newSocket.on('waitingForPlayer', () => {
+      setWaiting(true);
+    });
+
     newSocket.on('gameInit', (data) => {
+      setWaiting(false);
       setGrid(data.grid);
       setCurrentPlayer(data.startingPlayer);
       setIsMyTurn(data.startingPlayer === playerId);
@@ -74,17 +81,12 @@ const TicTacMinesweeper = () => {
     socket.emit('restartGame', { roomId });
   }, [socket, roomId]);
 
-  const handleJoinRoom = useCallback(() => {
-    socket.emit('joinRoom');
-  }, [socket]);
-
   return (
     <div className="game-container">
       <h1>Tic-Tac-Minesweeper</h1>
-      {!roomId && (
-        <button onClick={handleJoinRoom}>Join Game</button>
-      )}
-      {roomId && (
+      {waiting ? (
+        <p>Waiting for another player to join...</p>
+      ) : roomId ? (
         <>
           <div className="scores">
             <div>Player X: {scores.X}</div>
@@ -113,6 +115,8 @@ const TicTacMinesweeper = () => {
             </div>
           )}
         </>
+      ) : (
+        <p>Connecting to server...</p>
       )}
     </div>
   );

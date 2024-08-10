@@ -87,10 +87,12 @@ io.on('connection', (socket) => {
   socket.emit('playerId', socket.id);
 
   socket.on('joinRoom', () => {
+    console.log(`Player ${socket.id} attempting to join a room`);
     let room = [...games.entries()].find(([_, game]) => game.players.length < 2);
     
     if (!room) {
       const roomId = uuidv4();
+      console.log(`Creating new room with ID: ${roomId}`);
       games.set(roomId, initializeGame());
       room = [roomId, games.get(roomId)];
     }
@@ -98,13 +100,18 @@ io.on('connection', (socket) => {
     const [roomId, game] = room;
     game.players.push(socket.id);
     socket.join(roomId);
+    console.log(`Player ${socket.id} joined room ${roomId}`);
     socket.emit('joinedRoom', { roomId });
 
     if (game.players.length === 2) {
+      console.log(`Game in room ${roomId} is starting`);
       io.to(roomId).emit('gameInit', {
         grid: game.grid,
         startingPlayer: game.currentPlayer
       });
+    } else {
+      console.log(`Waiting for another player in room ${roomId}`);
+      socket.emit('waitingForPlayer');
     }
   });
 
