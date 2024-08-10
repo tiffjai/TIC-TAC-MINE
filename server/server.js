@@ -1,11 +1,11 @@
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
+const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
+const socketServer = new Server(server, {
   cors: {
     origin: "https://tiffjai.github.io",   
     methods: ["GET", "POST"],
@@ -20,7 +20,7 @@ app.get('/', (req, res) => {
 const games = new Map();
 
 function initializeGame() {
-  const grid = Array(9).fill().map(() => Array(9).fill({ revealed: false, value: null, isMine: false }));
+  const grid = Array(9).fill().map(() => Array(9).fill().map(() => ({ revealed: false, value: null, isMine: false })));
   const mineLocations = [];
   while (mineLocations.length < 10) {
     const row = Math.floor(Math.random() * 9);
@@ -34,16 +34,26 @@ function initializeGame() {
 }
 
 function processMove(game, row, col) {
-  if (game.grid[row][col].revealed) return { valid: false };
+  console.log(`Processing move: row ${row}, col ${col}`);
+  console.log(`Current game state:`, JSON.stringify(game, null, 2));
+
+  if (game.grid[row][col].revealed) {
+    console.log(`Cell already revealed`);
+    return { valid: false };
+  }
   game.grid[row][col].revealed = true;
   
   if (game.grid[row][col].isMine) {
+    console.log(`Mine hit!`);
     return { valid: true, hitMine: true };
   }
 
   game.grid[row][col].value = game.currentPlayer;
   const gameResult = checkGameStatus(game);
   game.currentPlayer = game.currentPlayer === 'X' ? 'O' : 'X';
+
+  console.log(`Move processed. New game state:`, JSON.stringify(game, null, 2));
+  console.log(`Game result:`, gameResult);
 
   return { valid: true, hitMine: false, ...gameResult };
 }
@@ -68,7 +78,7 @@ function checkGameStatus(game) {
   return { gameOver: false };
 }
 
-io.on('connection', (socket) => {
+socketServer.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
   socket.on('joinRoom', () => {
@@ -91,7 +101,7 @@ io.on('connection', (socket) => {
 
     if (game.players.length === 2) {
       console.log(`Starting game in room ${roomId}`);
-      io.to(roomId).emit('gameInit', { grid: game.grid, startingPlayer: game.currentPlayer });
+      socketServer.to(roomId).emit('gameInit', { grid: game.grid, startingPlayer: game.currentPlayer, roomId });
     } else {
       console.log(`Waiting for second player in room ${roomId}`);
       socket.emit('waitingForPlayer');
@@ -99,19 +109,24 @@ io.on('connection', (socket) => {
   });
 
   socket.on('makeMove', ({ row, col, roomId }) => {
-    console.log(`Move attempt by ${socket.id} in room ${roomId}: row ${row}, col ${col}`);
+    console.log(`Move received: row ${row}, col ${col}, room ${roomId}`);
     const game = games.get(roomId);
-    if (!game || game.players[game.currentPlayer] !== socket.id) {
-      console.log(`Invalid move attempt by ${socket.id} in room ${roomId}`);
+    if (!game) {
+      console.log(`Game not found for room ${roomId}`);
+      return;
+    }
+    if (game.players[game.players.indexOf(socket.id)] !== game.currentPlayer) {
+      console.log(`Not current player's turn: ${socket.id}`);
       return;
     }
     const result = processMove(game, row, col);
+    console.log(`Move result:`, result);
     if (result.valid) {
       console.log(`Valid move made in room ${roomId}`);
-      io.to(roomId).emit('moveMade', { grid: game.grid, nextPlayer: game.currentPlayer });
+      socketServer.to(roomId).emit('moveMade', { grid: game.grid, nextPlayer: game.currentPlayer });
       if (result.gameOver) {
         console.log(`Game over in room ${roomId}. Winner: ${result.winner}`);
-        io.to(roomId).emit('gameOver', { winner: result.winner, scores: game.scores });
+        socketServer.to(roomId).emit('gameOver', { winner: result.winner, scores: game.scores });
       }
     }
   });
@@ -126,7 +141,7 @@ io.on('connection', (socket) => {
           games.delete(roomId);
         } else {
           console.log(`Player disconnected from room ${roomId}. Notifying remaining player.`);
-          io.to(roomId).emit('playerDisconnected', { remainingPlayer: game.players[0] });
+          socketServer.to(roomId).emit('playerDisconnected', { remainingPlayer: game.players[0] });
         }
         break;
       }

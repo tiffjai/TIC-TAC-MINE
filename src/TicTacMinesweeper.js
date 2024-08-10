@@ -1,4 +1,3 @@
-// TicTacMinesweeper.js (Client-side)
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import './TicTacMinesweeper.css';
@@ -10,6 +9,7 @@ const TicTacMinesweeper = () => {
   const [winner, setWinner] = useState(null);
   const [socket, setSocket] = useState(null);
   const [waitingForPlayer, setWaitingForPlayer] = useState(false);
+  const [currentRoomId, setCurrentRoomId] = useState(null);
 
   useEffect(() => {
     const SERVER_URL = process.env.REACT_APP_SERVER_URL || 'https://tic-tac-mine.onrender.com';
@@ -31,6 +31,7 @@ const TicTacMinesweeper = () => {
       setGameOver(false);
       setWinner(null);
       setWaitingForPlayer(false);
+      setCurrentRoomId(data.roomId);
     });
 
     newSocket.on('moveMade', data => {
@@ -43,6 +44,7 @@ const TicTacMinesweeper = () => {
       console.log('Game over', data);
       setGameOver(true);
       setWinner(data.winner);
+      console.log(`Game Over. Winner: ${data.winner}. Scores:`, data.scores);
     });
 
     newSocket.on('waitingForPlayer', () => {
@@ -62,7 +64,8 @@ const TicTacMinesweeper = () => {
 
   const handleCellClick = (row, col) => {
     if (!gameOver && grid[row][col].value === null) {
-      socket.emit('makeMove', { row, col });
+      console.log(`Attempting move: row ${row}, col ${col}`);
+      socket.emit('makeMove', { row, col, roomId: currentRoomId });
     }
   };
 
@@ -72,15 +75,22 @@ const TicTacMinesweeper = () => {
       {waitingForPlayer ? (
         <div>Waiting for another player to join...</div>
       ) : (
-        <div className="grid">
-          {grid.map((row, rowIndex) => row.map((cell, colIndex) => (
-            <div key={`${rowIndex}-${colIndex}`} 
-                 className={`cell ${cell.revealed ? 'revealed' : ''} ${cell.isMine ? 'mine' : ''}`}
-                 onClick={() => handleCellClick(rowIndex, colIndex)}>
-              {cell.revealed ? (cell.isMine ? '💣' : cell.value) : ''}
-            </div>
-          )))}
-        </div>
+        <>
+          <div className="current-player">
+            Current player: {currentPlayer}
+          </div>
+          <div className="grid">
+            {grid.map((row, rowIndex) => row.map((cell, colIndex) => (
+              <div 
+                key={`${rowIndex}-${colIndex}`} 
+                className={`cell ${cell.revealed ? 'revealed' : ''} ${cell.isMine && cell.revealed ? 'mine' : ''}`}
+                onClick={() => handleCellClick(rowIndex, colIndex)}
+              >
+                {cell.revealed ? (cell.isMine ? '💣' : cell.value || '') : ''}
+              </div>
+            )))}
+          </div>
+        </>
       )}
       {gameOver && (
         <div className="game-over">
