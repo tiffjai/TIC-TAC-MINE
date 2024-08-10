@@ -10,9 +10,10 @@ const TicTacMinesweeper = () => {
   const [socket, setSocket] = useState(null);
   const [waitingForPlayer, setWaitingForPlayer] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState(null);
+  const [playerSymbol, setPlayerSymbol] = useState(null);
 
   useEffect(() => {
-    const SERVER_URL = process.env.REACT_APP_SERVER_URL || 'https://tic-tac-mine.onrender.com';
+    const SERVER_URL = process.env.REACT_APP_SERVER_URL || 'http://localhost:3001';
     const newSocket = io(SERVER_URL, { withCredentials: true });
     setSocket(newSocket);
 
@@ -32,6 +33,7 @@ const TicTacMinesweeper = () => {
       setWinner(null);
       setWaitingForPlayer(false);
       setCurrentRoomId(data.roomId);
+      setPlayerSymbol(data.playerSymbol);
     });
 
     newSocket.on('moveMade', data => {
@@ -63,7 +65,7 @@ const TicTacMinesweeper = () => {
   }, [socket]);
 
   const handleCellClick = (row, col) => {
-    if (!gameOver && grid[row][col].value === null) {
+    if (!gameOver && grid[row][col].value === null && currentPlayer === playerSymbol) {
       console.log(`Attempting move: row ${row}, col ${col}`);
       socket.emit('makeMove', { row, col, roomId: currentRoomId });
     }
@@ -78,6 +80,9 @@ const TicTacMinesweeper = () => {
         <>
           <div className="current-player">
             Current player: {currentPlayer}
+          </div>
+          <div className="player-symbol">
+            Your symbol: {playerSymbol}
           </div>
           <div className="grid">
             {grid.map((row, rowIndex) => row.map((cell, colIndex) => (
