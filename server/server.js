@@ -6,17 +6,18 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"],
+    origin: 'https://tic-tac-mine.onrender.com', // Change this to your client's URL in production
+    methods: ['GET', 'POST'],
     credentials: true
   }
 });
 
+// Socket.io connection
 io.on('connection', (socket) => {
-  console.log('New client connected', socket.id);
+  console.log('New client connected:', socket.id);
 
   socket.on('move', (data) => {
-    console.log(`Move received:`, data);
+    console.log('Move received:', data);
     io.emit('move', { grid: data.grid, nextPlayer: data.nextPlayer });
   });
 
@@ -26,7 +27,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected', socket.id);
+    console.log('Client disconnected:', socket.id);
   });
 
   socket.on('error', (err) => {
@@ -35,11 +36,7 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3001, () => {
-  console.log('Listening on port 3001');
-});
-
 const port = process.env.PORT || 3001;
 server.listen(port, () => {
-  console.log(`Listening on port ${port}`);
+  console.log(`Server is listening on port ${port}`);
 });
