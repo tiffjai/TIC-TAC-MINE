@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const socketServer = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "https://tic-tac-mine.onrender.com",
     methods: ["GET", "POST"],
     credentials: true
   }
