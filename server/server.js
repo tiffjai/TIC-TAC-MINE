@@ -72,13 +72,15 @@ io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
   socket.on('joinRoom', () => {
+    console.log(`Attempting to join room for socket ${socket.id}`);
     let room = [...games.entries()].find(([_, g]) => g.players.length < 2);
     
     if (!room) {
-        const roomId = uuidv4();
-        const newGame = initializeGame();
-        games.set(roomId, newGame);
-        room = [roomId, newGame];
+      const roomId = uuidv4();
+      const newGame = initializeGame();
+      games.set(roomId, newGame);
+      room = [roomId, newGame];
+      console.log(`Created new room ${roomId}`);
     }
 
     const [roomId, game] = room;
@@ -88,35 +90,42 @@ io.on('connection', (socket) => {
     console.log(`Player ${socket.id} joined room ${roomId}`);
 
     if (game.players.length === 2) {
-        io.to(roomId).emit('gameInit', { grid: game.grid, startingPlayer: game.currentPlayer });
+      console.log(`Starting game in room ${roomId}`);
+      io.to(roomId).emit('gameInit', { grid: game.grid, startingPlayer: game.currentPlayer });
     } else {
-        socket.emit('waitingForPlayer');
+      console.log(`Waiting for second player in room ${roomId}`);
+      socket.emit('waitingForPlayer');
     }
   });
 
   socket.on('makeMove', ({ row, col, roomId }) => {
+    console.log(`Move attempt by ${socket.id} in room ${roomId}: row ${row}, col ${col}`);
     const game = games.get(roomId);
     if (!game || game.players[game.currentPlayer] !== socket.id) {
-        return;
+      console.log(`Invalid move attempt by ${socket.id} in room ${roomId}`);
+      return;
     }
     const result = processMove(game, row, col);
     if (result.valid) {
-        io.to(roomId).emit('moveMade', { grid: game.grid, nextPlayer: game.currentPlayer });
-        if (result.gameOver) {
-            io.to(roomId).emit('gameOver', { winner: result.winner, scores: game.scores });
-        }
+      console.log(`Valid move made in room ${roomId}`);
+      io.to(roomId).emit('moveMade', { grid: game.grid, nextPlayer: game.currentPlayer });
+      if (result.gameOver) {
+        console.log(`Game over in room ${roomId}. Winner: ${result.winner}`);
+        io.to(roomId).emit('gameOver', { winner: result.winner, scores: game.scores });
+      }
     }
   });
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
-    // Remove player from game and delete game if empty
     for (let [roomId, game] of games) {
       if (game.players.includes(socket.id)) {
         game.players = game.players.filter(id => id !== socket.id);
         if (!game.players.length) {
+          console.log(`Deleting empty room ${roomId}`);
           games.delete(roomId);
         } else {
+          console.log(`Player disconnected from room ${roomId}. Notifying remaining player.`);
           io.to(roomId).emit('playerDisconnected', { remainingPlayer: game.players[0] });
         }
         break;
