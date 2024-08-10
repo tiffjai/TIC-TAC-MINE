@@ -1,70 +1,90 @@
-# Getting Started with Create React App
+# Tic-Tac-Minesweeper
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Tic-Tac-Minesweeper is an exciting blend of the classic Tic-Tac-Toe game and Minesweeper. Players take turns placing their marks (X or O) on a 9x9 grid, but beware - there are hidden mines! The game ends when a player completes a line of three marks or when a player hits a mine.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- 9x9 grid gameplay
+- Two-player turn-based system
+- Hidden mines add an element of risk and strategy
+- Real-time multiplayer using Socket.IO
+- Responsive design for both desktop and mobile play
 
-### `npm start`
+## Live Demo
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+You can play the game live at: [https://tiffjai.github.io/tic-tac-minesweeper](https://tiffjai.github.io/tic-tac-minesweeper)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Technology Stack
 
-### `npm test`
+- Frontend: React.js
+- Backend: Node.js with Express
+- Real-time Communication: Socket.IO
+- Hosting: GitHub Pages (Frontend), Render.com (Backend)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Local Development
 
-### `npm run build`
+To set up the project locally, follow these steps:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Clone the repository:
+   ```
+   git clone https://github.com/tiffjai/tic-tac-minesweeper.git
+   cd tic-tac-minesweeper
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. Install dependencies for both frontend and backend:
+   ```
+   # Install frontend dependencies
+   cd client
+   npm install
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+   # Install backend dependencies
+   cd ../server
+   npm install
+   ```
 
-### `npm run eject`
+3. Set up environment variables:
+   - In the `client` directory, create a `.env` file with:
+     ```
+     REACT_APP_SERVER_URL=http://localhost:3001
+     ```
+   - In the `server` directory, create a `.env` file with:
+     ```
+     PORT=3001
+     ```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+4. Start the development servers:
+   - For the backend:
+     ```
+     cd server
+     npm start
+     ```
+   - For the frontend:
+     ```
+     cd client
+     npm start
+     ```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+5. Open [http://localhost:3000](http://localhost:3000) to view the game in your browser.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## How to Play
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+1. Open the game link in your browser.
+2. Wait for another player to join the game.
+3. Players take turns clicking on cells to place their mark (X or O).
+4. The goal is to create a line of three of your marks horizontally, vertically, or diagonally.
+5. Be careful! Some cells contain hidden mines. Clicking on a mine ends the game, and the other player wins.
+6. The game ends when a player creates a line of three marks or when a mine is revealed.
 
-## Learn More
+## Contributing
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## License
 
-### Code Splitting
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Acknowledgments
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Inspired by the classic games Tic-Tac-Toe and Minesweeper
+- Thanks to [Socket.IO](https://socket.io/) for making real-time gameplay possible
+- Shoutout to the React and Node.js communities for their excellent documentation and resources
