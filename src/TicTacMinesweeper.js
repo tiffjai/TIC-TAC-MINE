@@ -3,8 +3,8 @@ import io from 'socket.io-client';
 import './TicTacMinesweeper.css';
 
 const TicTacMinesweeper = () => {
-  const [grid, setGrid] = useState([]);
-  const [currentPlayer, setCurrentPlayer] = useState('');
+  const [grid, setGrid] = useState(Array(9).fill().map(() => Array(9).fill({ value: null, revealed: false, isMine: false })));
+  const [currentPlayer, setCurrentPlayer] = useState('X');
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState(null);
   const [socket, setSocket] = useState(null);
@@ -50,6 +50,10 @@ const TicTacMinesweeper = () => {
       console.log('Move made', data);
       setGrid(data.grid);
       setCurrentPlayer(data.nextPlayer);
+      if (data.hitMine) {
+        setGameOver(true);
+        setWinner(data.nextPlayer); // The player who didn't hit the mine wins
+      }
     });
 
     newSocket.on('gameOver', data => {
@@ -76,7 +80,7 @@ const TicTacMinesweeper = () => {
   }, [socket]);
 
   const handleCellClick = (row, col) => {
-    if (!gameOver && grid[row][col].value === null && currentPlayer === playerSymbol) {
+    if (!gameOver && !grid[row][col].revealed && currentPlayer === playerSymbol) {
       console.log(`Attempting move: row ${row}, col ${col}`);
       socket.emit('makeMove', { row, col, roomId: currentRoomId });
     }
@@ -101,15 +105,19 @@ const TicTacMinesweeper = () => {
             Your symbol: {playerSymbol}
           </div>
           <div className="grid">
-            {grid.map((row, rowIndex) => row.map((cell, colIndex) => (
-              <div 
-                key={`${rowIndex}-${colIndex}`} 
-                className={`cell ${cell.revealed ? 'revealed' : ''} ${cell.isMine && cell.revealed ? 'mine' : ''}`}
-                onClick={() => handleCellClick(rowIndex, colIndex)}
-              >
-                {cell.revealed ? (cell.isMine ? '💣' : cell.value || '') : ''}
+            {grid.map((row, rowIndex) => (
+              <div key={rowIndex} className="row">
+                {row.map((cell, colIndex) => (
+                  <div 
+                    key={`${rowIndex}-${colIndex}`} 
+                    className={`cell ${cell.revealed ? 'revealed' : ''} ${cell.isMine && cell.revealed ? 'mine' : ''}`}
+                    onClick={() => handleCellClick(rowIndex, colIndex)}
+                  >
+                    {cell.revealed ? (cell.isMine ? '💣' : cell.value || '') : ''}
+                  </div>
+                ))}
               </div>
-            )))}
+            ))}
           </div>
         </>
       )}

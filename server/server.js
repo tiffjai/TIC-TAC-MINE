@@ -13,56 +13,35 @@ const socketServer = new Server(server, {
   }
 });
 
-app.get('/', (req, res) => {
-  res.send("Server is running!");
-});
-
 const games = new Map();
 
 function initializeGame() {
-  const grid = Array(3).fill().map(() => Array(3).fill().map(() => ({ revealed: false, value: null, isMine: false })));
-  return { grid, currentPlayer: 'X', players: [], scores: { X: 0, O: 0 } };
+  const grid = Array(9).fill().map(() => Array(9).fill().map(() => ({ value: null, revealed: false, isMine: false })));
+  const mineLocations = [];
+  while (mineLocations.length < 10) {
+    const row = Math.floor(Math.random() * 9);
+    const col = Math.floor(Math.random() * 9);
+    if (!mineLocations.some(mine => mine.row === row && mine.col === col)) {
+      mineLocations.push({ row, col });
+      grid[row][col].isMine = true;
+    }
+  }
+  return { grid, mineLocations, currentPlayer: 'X', players: [], scores: { X: 0, O: 0 } };
 }
 
 function processMove(game, row, col, playerSymbol) {
-  console.log(`Processing move: row ${row}, col ${col}`);
-  console.log(`Current game state:`, JSON.stringify(game, null, 2));
-
-  if (game.grid[row][col].value !== null) {
-    console.log(`Cell already occupied`);
-    return { valid: false };
-  }
+  if (game.grid[row][col].revealed) return { valid: false };
   
-  game.grid[row][col].value = playerSymbol;
   game.grid[row][col].revealed = true;
-
-  const gameResult = checkGameStatus(game);
-  game.currentPlayer = game.currentPlayer === 'X' ? 'O' : 'X';
-
-  console.log(`Move processed. New game state:`, JSON.stringify(game, null, 2));
-  console.log(`Game result:`, gameResult);
-
-  return { valid: true, ...gameResult };
-}
-
-function checkGameStatus(game) {
-  const winPatterns = [
-    [[0,0],[0,1],[0,2]], [[1,0],[1,1],[1,2]], [[2,0],[2,1],[2,2]],
-    [[0,0],[1,0],[2,0]], [[0,1],[1,1],[2,1]], [[0,2],[1,2],[2,2]],
-    [[0,0],[1,1],[2,2]], [[0,2],[1,1],[2,0]]
-  ];
-
-  for (let pattern of winPatterns) {
-    if (pattern.every(([r, c]) => game.grid[r][c].value === game.currentPlayer)) {
-      return { gameOver: true, winner: game.currentPlayer };
-    }
+  
+  if (game.grid[row][col].isMine) {
+    return { valid: true, hitMine: true, grid: game.grid };
   }
 
-  if (game.grid.every(row => row.every(cell => cell.value !== null))) {
-    return { gameOver: true, winner: null }; // Draw
-  }
-
-  return { gameOver: false };
+  game.grid[row][col].value = playerSymbol;
+  const nextPlayer = playerSymbol === 'X' ? 'O' : 'X';
+  
+  return { valid: true, hitMine: false, grid: game.grid, nextPlayer };
 }
 
 socketServer.on('connection', (socket) => {
@@ -89,14 +68,9 @@ socketServer.on('connection', (socket) => {
 
     if (game.players.length === 2) {
       console.log(`Starting game in room ${roomId}`);
-      socketServer.to(roomId).emit('gameInit', { 
-        grid: game.grid, 
-        startingPlayer: game.currentPlayer, 
-        roomId 
-      });
       game.players.forEach(player => {
         socketServer.to(player.id).emit('gameInit', {
-          grid: game.grid,
+          grid: game.grid.map(row => row.map(cell => ({ ...cell, isMine: false }))),
           startingPlayer: game.currentPlayer,
           roomId,
           playerSymbol: player.symbol
@@ -123,11 +97,14 @@ socketServer.on('connection', (socket) => {
     const result = processMove(game, row, col, player.symbol);
     console.log(`Move result:`, result);
     if (result.valid) {
-      console.log(`Valid move made in room ${roomId}`);
-      socketServer.to(roomId).emit('moveMade', { grid: game.grid, nextPlayer: game.currentPlayer });
-      if (result.gameOver) {
-        console.log(`Game over in room ${roomId}. Winner: ${result.winner}`);
-        socketServer.to(roomId).emit('gameOver', { winner: result.winner, scores: game.scores });
+      game.currentPlayer = result.nextPlayer;
+      socketServer.to(roomId).emit('moveMade', {
+        grid: result.grid.map(row => row.map(cell => ({ ...cell, isMine: cell.revealed ? cell.isMine : false }))),
+        nextPlayer: game.currentPlayer,
+        hitMine: result.hitMine
+      });
+      if (result.hitMine) {
+        socketServer.to(roomId).emit('gameOver', { winner: result.nextPlayer });
       }
     }
   });
