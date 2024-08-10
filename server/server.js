@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "https://tiffjai.github.io/TIC-TAC-MINE/",   
+    origin: "https://tiffjai.github.io",   
     methods: ["GET", "POST"],
     credentials: true
   }
