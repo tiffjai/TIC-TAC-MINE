@@ -1,117 +1,163 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const server = http.createServer(app);
 
-// Enhance CORS handling for multiple origins
-const originsAllowed = process.env.NODE_ENV === 'production'
-    ? ['https://tic-tac-mine.onrender.com']
-    : ['http://localhost:3000'];
-
 const io = socketIo(server, {
-    cors: {
-        origin: originsAllowed,
-        methods: ['GET', 'POST'],
-        credentials: true
-    }
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
 });
 
 app.get('/', (req, res) => {
-    res.send("Server is running!");
+  res.send("Server is running!");
 });
 
-let grid = [];
-let mineLocations = [];
-let currentPlayer = 'X';
+const games = new Map();
 
-// Initialize the game with a grid and random mines
 const initializeGame = () => {
-    grid = Array(9).fill().map(() => Array(9).fill({ revealed: false, value: null, isMine: false }));
-    mineLocations = [];
+  const grid = Array(9).fill().map(() => Array(9).fill({ revealed: false, value: null, isMine: false }));
+  const mineLocations = [];
 
-    while (mineLocations.length < 10) {
-        const row = Math.floor(Math.random() * 9);
-        const col = Math.floor(Math.random() * 9);
-        if (!mineLocations.some(mine => mine.row === row && mine.col === col)) {
-            mineLocations.push({ row, col });
-            grid[row][col].isMine = true;
-        }
+  while (mineLocations.length < 10) {
+    const row = Math.floor(Math.random() * 9);
+    const col = Math.floor(Math.random() * 9);
+    if (!mineLocations.some(mine => mine.row === row && mine.col === col)) {
+      mineLocations.push({ row, col });
+      grid[row][col].isMine = true;
     }
+  }
 
-    currentPlayer = 'X';
-    return { grid, mines: mineLocations, startingPlayer: currentPlayer };
+  return {
+    grid,
+    mineLocations,
+    currentPlayer: 'X',
+    players: [],
+    scores: { X: 0, O: 0 }
+  };
 };
 
-// Process a move and update the grid
-const processMove = (row, col, player) => {
-    if (grid[row][col].revealed || grid[row][col].isMine) return { valid: false, grid };
+const processMove = (game, row, col) => {
+  if (game.grid[row][col].revealed) return { valid: false };
 
-    grid[row][col] = { ...grid[row][col], revealed: true, value: player };
+  game.grid[row][col].revealed = true;
+  
+  if (game.grid[row][col].isMine) {
+    return { valid: true, hitMine: true };
+  }
 
-    const gameResult = checkGameStatus(grid, player);
-    const nextPlayer = player === 'X' ? 'O' : 'X';
+  game.grid[row][col].value = game.currentPlayer;
 
-    return { valid: true, grid, nextPlayer, ...gameResult };
+  const gameResult = checkGameStatus(game);
+  game.currentPlayer = game.currentPlayer === 'X' ? 'O' : 'X';
+
+  return { valid: true, hitMine: false, ...gameResult };
 };
 
-// Check for win conditions or draw
-const checkGameStatus = (grid, player) => {
-    const completeLine = (arr) => arr.every(cell => cell.value === player && cell.revealed);
+const checkGameStatus = (game) => {
+  const winPatterns = [
+    [[0,0],[0,1],[0,2]], [[1,0],[1,1],[1,2]], [[2,0],[2,1],[2,2]], // Rows
+    [[0,0],[1,0],[2,0]], [[0,1],[1,1],[2,1]], [[0,2],[1,2],[2,2]], // Columns
+    [[0,0],[1,1],[2,2]], [[0,2],[1,1],[2,0]] // Diagonals
+  ];
 
-    for (let i = 0; i < grid.length; i++) {
-        if (completeLine(grid[i])) return { gameOver: true, winner: player };
-        if (completeLine(grid.map(row => row[i]))) return { gameOver: true, winner: player };
+  for (let pattern of winPatterns) {
+    if (pattern.every(([row, col]) => 
+      game.grid[row][col].revealed && 
+      game.grid[row][col].value === game.currentPlayer)) {
+      return { gameOver: true, winner: game.currentPlayer };
     }
+  }
 
-    const diag1Win = completeLine(grid.map((row, idx) => row[idx]));
-    const diag2Win = completeLine(grid.map((row, idx) => row[grid.length - 1 - idx]));
+  if (game.grid.every(row => row.every(cell => cell.revealed))) {
+    return { gameOver: true, winner: null }; // Draw
+  }
 
-    if (diag1Win || diag2Win) return { gameOver: true, winner: player };
-
-    const allCellsRevealed = grid.every(row => row.every(cell => cell.revealed));
-    if (allCellsRevealed) return { gameOver: true, winner: null };
-
-    return { gameOver: false };
+  return { gameOver: false };
 };
 
-// Socket.io connection setup
 io.on('connection', (socket) => {
-    console.log('New client connected:', socket.id);
+  console.log('New client connected:', socket.id);
 
-    socket.on('initializeGame', () => {
-        const gameData = initializeGame();
-        io.emit('gameInit', gameData);
-    });
+  socket.emit('playerId', socket.id);
 
-    socket.on('makeMove', ({ row, col, player }) => {
-        const result = processMove(row, col, player);
-        if (result.valid) {
-            io.emit('move', { grid: result.grid, nextPlayer: result.nextPlayer });
-            if (result.gameOver) {
-                io.emit('gameOver', { winner: result.winner });
-            }
+  socket.on('joinRoom', () => {
+    let room = [...games.entries()].find(([_, game]) => game.players.length < 2);
+    
+    if (!room) {
+      const roomId = uuidv4();
+      games.set(roomId, initializeGame());
+      room = [roomId, games.get(roomId)];
+    }
+
+    const [roomId, game] = room;
+    game.players.push(socket.id);
+    socket.join(roomId);
+    socket.emit('joinedRoom', { roomId });
+
+    if (game.players.length === 2) {
+      io.to(roomId).emit('gameInit', {
+        grid: game.grid,
+        startingPlayer: game.currentPlayer
+      });
+    }
+  });
+
+  socket.on('makeMove', ({ row, col, roomId }) => {
+    const game = games.get(roomId);
+    if (!game || game.players[game.players.indexOf(socket.id)] !== game.currentPlayer) return;
+
+    const result = processMove(game, row, col);
+    if (result.valid) {
+      if (result.hitMine) {
+        game.scores[game.currentPlayer === 'X' ? 'O' : 'X']++;
+        io.to(roomId).emit('minesRevealed', { grid: game.grid, winner: game.currentPlayer === 'X' ? 'O' : 'X' });
+      } else {
+        io.to(roomId).emit('move', { grid: game.grid, nextPlayer: game.currentPlayer });
+        if (result.gameOver) {
+          if (result.winner) game.scores[result.winner]++;
+          io.to(roomId).emit('gameOver', { winner: result.winner, scores: game.scores });
         }
-    });
+      }
+    }
+  });
 
-    socket.on('revealMines', ({ row, col, player }) => {
-        console.log('Mine triggered by:', player);
-        grid[row][col] = { ...grid[row][col], revealed: true };
-        io.emit('minesRevealed', { grid, triggeredBy: player });
-    });
+  socket.on('restartGame', ({ roomId }) => {
+    if (games.has(roomId)) {
+      const newGame = initializeGame();
+      newGame.players = games.get(roomId).players;
+      newGame.scores = games.get(roomId).scores;
+      games.set(roomId, newGame);
+      io.to(roomId).emit('gameInit', {
+        grid: newGame.grid,
+        startingPlayer: newGame.currentPlayer
+      });
+    }
+  });
 
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-    });
-
-    socket.on('error', (err) => {
-        console.error('Socket encountered error:', err);
-        socket.disconnect(true);
-    });
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+    for (let [roomId, game] of games) {
+      const playerIndex = game.players.indexOf(socket.id);
+      if (playerIndex !== -1) {
+        game.players.splice(playerIndex, 1);
+        if (game.players.length === 0) {
+          games.delete(roomId);
+        } else {
+          io.to(roomId).emit('playerDisconnected');
+        }
+        break;
+      }
+    }
+  });
 });
 
 const port = process.env.PORT || 3001;
 server.listen(port, () => {
-    console.log(`Server is listening on port ${port}`);
+  console.log(`Server is listening on port ${port}`);
 });

@@ -1,32 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import io from 'socket.io-client';
 import './TicTacMinesweeper.css';
 
 const TicTacMinesweeper = () => {
   const [grid, setGrid] = useState([]);
-  const [mineLocations, setMineLocations] = useState([]);
-  const [currentPlayer, setCurrentPlayer] = useState('X');
+  const [currentPlayer, setCurrentPlayer] = useState('');
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState(null);
   const [scores, setScores] = useState({ X: 0, O: 0 });
-  const [isMyTurn, setIsMyTurn] = useState(true);
+  const [isMyTurn, setIsMyTurn] = useState(false);
   const [socket, setSocket] = useState(null);
+  const [playerId, setPlayerId] = useState(null);
+  const [roomId, setRoomId] = useState(null);
 
   useEffect(() => {
-    const newSocket = io('https://tic-tac-mine.onrender.com', {
+    const newSocket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001', {
       withCredentials: true,
-      extraHeaders: {
-        "my-custom-header": "abcd"
-      }
     });
 
     setSocket(newSocket);
 
+    newSocket.on('connect', () => {
+      console.log('Connected to server');
+    });
+
+    newSocket.on('playerId', (id) => {
+      setPlayerId(id);
+    });
+
+    newSocket.on('joinedRoom', (data) => {
+      setRoomId(data.roomId);
+    });
+
     newSocket.on('gameInit', (data) => {
       setGrid(data.grid);
-      setMineLocations(data.mines);
       setCurrentPlayer(data.startingPlayer);
-      setIsMyTurn(data.startingPlayer === currentPlayer);
+      setIsMyTurn(data.startingPlayer === playerId);
       setGameOver(false);
       setWinner(null);
     });
@@ -34,71 +43,79 @@ const TicTacMinesweeper = () => {
     newSocket.on('move', (data) => {
       setGrid(data.grid);
       setCurrentPlayer(data.nextPlayer);
-      setIsMyTurn(data.nextPlayer === currentPlayer);
+      setIsMyTurn(data.nextPlayer === playerId);
     });
 
     newSocket.on('minesRevealed', (data) => {
       setGrid(data.grid);
       setGameOver(true);
-      setWinner(data.triggeredBy);
+      setWinner(data.winner);
     });
 
     newSocket.on('gameOver', (data) => {
       setGameOver(true);
       setWinner(data.winner);
+      setScores(data.scores);
+    });
+
+    newSocket.on('error', (error) => {
+      console.error('Socket error:', error);
     });
 
     return () => newSocket.disconnect();
-  }, [currentPlayer]);
+  }, [playerId]);
 
-  useEffect(() => {
-    if (socket) {
-      socket.emit('initializeGame');
-    }
+  const handleCellClick = useCallback((row, col) => {
+    if (!isMyTurn || gameOver) return;
+    socket.emit('makeMove', { row, col, roomId });
+  }, [isMyTurn, gameOver, socket, roomId]);
+
+  const handleRestartGame = useCallback(() => {
+    socket.emit('restartGame', { roomId });
+  }, [socket, roomId]);
+
+  const handleJoinRoom = useCallback(() => {
+    socket.emit('joinRoom');
   }, [socket]);
-
-  const handleCellClick = (row, col) => {
-    if (!isMyTurn || grid[row][col].revealed || gameOver) return;
-
-    if (mineLocations.some(mine => mine.row === row && mine.col === col)) {
-      socket.emit('revealMines', { row, col, player: currentPlayer });
-    } else {
-      socket.emit('makeMove', { row, col, player: currentPlayer });
-    }
-  };
 
   return (
     <div className="game-container">
       <h1>Tic-Tac-Minesweeper</h1>
-      <div className="scores">
-        <div>Player X: {scores.X}</div>
-        <div>Player O: {scores.O}</div>
-      </div>
-      <div className="current-player">Current Player: {currentPlayer}</div>
-      <div className="grid">
-        {grid.map((row, rowIndex) => (
-          <div key={rowIndex} className="row">
-            {row.map((cell, colIndex) => (
-              <div
-                key={`${rowIndex}-${colIndex}`}
-                className={`cell ${cell.revealed ? 'revealed' : ''} ${cell.isMine && cell.revealed ? 'mine' : ''}`}
-                onClick={() => handleCellClick(rowIndex, colIndex)}
-              >
-                {cell.revealed ? (cell.isMine ? '💣' : cell.value) : ''}
+      {!roomId && (
+        <button onClick={handleJoinRoom}>Join Game</button>
+      )}
+      {roomId && (
+        <>
+          <div className="scores">
+            <div>Player X: {scores.X}</div>
+            <div>Player O: {scores.O}</div>
+          </div>
+          <div className="current-player">Current Player: {currentPlayer}</div>
+          <div className="grid">
+            {grid.map((row, rowIndex) => (
+              <div key={rowIndex} className="row">
+                {row.map((cell, colIndex) => (
+                  <div
+                    key={`${rowIndex}-${colIndex}`}
+                    className={`cell ${cell.revealed ? 'revealed' : ''} ${cell.isMine && cell.revealed ? 'mine' : ''}`}
+                    onClick={() => handleCellClick(rowIndex, colIndex)}
+                  >
+                    {cell.revealed ? (cell.isMine ? '💣' : cell.value) : ''}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
-        ))}
-      </div>
-      {gameOver && (
-        <div className="game-over">
-          {winner ? `Game Over! ${winner} wins!` : 'Game Over! Hit a mine!'}
-          <button className="restart-button" onClick={() => socket.emit('initializeGame')}>Restart Game</button>
-        </div>
+          {gameOver && (
+            <div className="game-over">
+              {winner ? `Game Over! ${winner} wins!` : 'Game Over! It\'s a draw!'}
+              <button className="restart-button" onClick={handleRestartGame}>Restart Game</button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 };
 
 export default TicTacMinesweeper;
-
