@@ -9,7 +9,7 @@ const TicTacMinesweeper = () => {
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState(null);
   const [scores, setScores] = useState({ X: 0, O: 0 });
-  const [isMyTurn, setIsMyTurn] = useState(true); // Start with player 'X'
+  const [isMyTurn, setIsMyTurn] = useState(true);
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ const TicTacMinesweeper = () => {
     newSocket.on('minesRevealed', (data) => {
       setGrid(data.grid);
       setGameOver(true);
-      setWinner(data.triggeredBy); // Assuming the server sends who triggered the mine
+      setWinner(data.triggeredBy);
     });
 
     newSocket.on('gameOver', (data) => {
@@ -81,10 +81,10 @@ const TicTacMinesweeper = () => {
             {row.map((cell, colIndex) => (
               <div
                 key={`${rowIndex}-${colIndex}`}
-                className={`cell ${cell.revealed ? 'revealed' : ''} ${cell.value === '💣' ? 'mine' : ''}`}
+                className={`cell ${cell.revealed ? 'revealed' : ''} ${cell.isMine && cell.revealed ? 'mine' : ''}`}
                 onClick={() => handleCellClick(rowIndex, colIndex)}
               >
-                {cell.revealed ? cell.value : ''}
+                {cell.revealed ? (cell.isMine ? '💣' : cell.value) : ''}
               </div>
             ))}
           </div>
@@ -101,3 +101,4 @@ const TicTacMinesweeper = () => {
 };
 
 export default TicTacMinesweeper;
+
