@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.css": "/tic-tac-minesweeper/static/css/main.afe6b2d0.css",
-    "main.js": "/tic-tac-minesweeper/static/js/main.d43ad79e.js",
-    "index.html": "/tic-tac-minesweeper/index.html",
-    "main.afe6b2d0.css.map": "/tic-tac-minesweeper/static/css/main.afe6b2d0.css.map",
-    "main.d43ad79e.js.map": "/tic-tac-minesweeper/static/js/main.d43ad79e.js.map"
+    "main.css": "/TIC-TAC-MINE/static/css/main.afe6b2d0.css",
+    "main.js": "/TIC-TAC-MINE/static/js/main.d43ad79e.js",
+    "index.html": "/TIC-TAC-MINE/index.html",
+    "main.afe6b2d0.css.map": "/TIC-TAC-MINE/static/css/main.afe6b2d0.css.map",
+    "main.d43ad79e.js.map": "/TIC-TAC-MINE/static/js/main.d43ad79e.js.map"
   },
   "entrypoints": [
     "static/css/main.afe6b2d0.css",
